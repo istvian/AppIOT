@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,6 +22,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.appiot.screens.LoginScreen
+import com.example.appiot.screens.WelcomeScreen
+import com.example.appiot.service.auth.AuthService
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +33,10 @@ class MainActivity : ComponentActivity() {
             AppIOTTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column(
-                        modifier = Modifier.padding(innerPadding).fillMaxWidth().fillMaxHeight(),
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .fillMaxWidth()
+                            .fillMaxHeight(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top
                     ) {
@@ -45,14 +51,24 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavegacion() {
     val navController = rememberNavController()
+    val authService = remember { AuthService() }
+
 
     NavHost(
         navController = navController,
         startDestination = "login"
     ) {
         composable("login") {
-            LoginScreen()
+            LoginScreen(
+                onLogin = { navController.navigate("welcome") },
+                onGoToRegister = { navController.navigate("register") })
         }
+        composable("welcome") {
+            WelcomeScreen()
+        }
+    }
+    if(authService.estaAutenticado){
+        navController.navigate("welcome")
     }
 }
 
@@ -61,7 +77,12 @@ fun AppNavegacion() {
 fun AppNavegacionPreview() {
     AppIOTTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding).fillMaxWidth().fillMaxHeight()) {
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+            ) {
                 AppNavegacion()
             }
         }

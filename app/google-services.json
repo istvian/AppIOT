@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "379912503960",
+    "project_id": "appseiot",
+    "storage_bucket": "appseiot.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:379912503960:android:6990791cc457adc58d06ed",
+        "android_client_info": {
+          "package_name": "com.stvian.appiot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCK6Cf3gIjccvHIZjuTTaNj9SY0b-7aPQQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
