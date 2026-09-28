@@ -12,7 +12,12 @@
           "package_name": "com.stvian.appiot"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "379912503960-217s9lvk8amu0dorm859cvumjn0dg7d5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCK6Cf3gIjccvHIZjuTTaNj9SY0b-7aPQQ"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "379912503960-217s9lvk8amu0dorm859cvumjn0dg7d5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

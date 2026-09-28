@@ -3,6 +3,8 @@ package com.example.appiot.screens
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -63,7 +66,7 @@ fun LoginScreen(onLogin: () -> Unit, onGoToRegister: () -> Unit, modifier: Modif
             painter = painterResource(id = R.drawable.androide),
             contentDescription = "Logo de la App",
             modifier = Modifier
-                .size(120.dp)
+                .size(80.dp)
                 .padding(10.dp)
         )
         Text(
@@ -97,36 +100,80 @@ fun LoginScreen(onLogin: () -> Unit, onGoToRegister: () -> Unit, modifier: Modif
             singleLine = true,
             modifier = Modifier.padding(4.dp)
         )
-        Button(onClick = {
-            if (correo.isBlank() || contraseña.isBlank() || cargando) {
-                Toast.makeText(context, "Completa todos los campos", Toast.LENGTH_LONG).show()
-                return@Button
+        Column(
+            modifier = Modifier.width(250.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = {
+                    if (correo.isBlank() || contraseña.isBlank() || cargando) {
+                        Toast.makeText(context, "Completa todos los campos", Toast.LENGTH_LONG)
+                            .show()
+                        return@Button
+                    }
+                    coroutineScope.launch {
+                        cargando = true
+                        val resultado = authService.iniciarSesion(correo, contraseña)
+                        if (resultado.isSuccess) {
+                            Toast.makeText(
+                                context,
+                                "Sesión iniciada correctamente",
+                                Toast.LENGTH_LONG
+                            )
+                                .show()
+                            onLogin()
+                            cargando = false
+                        } else if (resultado.isFailure) {
+                            Toast.makeText(context, "Algo falló", Toast.LENGTH_LONG).show()
+                            cargando = false
+                        } else {
+                            Toast.makeText(context, "Datos incorrectos", Toast.LENGTH_LONG).show()
+                            cargando = false
+                        }
+                    }
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(text = "Iniciar sesión")
             }
-            coroutineScope.launch {
-                cargando = true
-                val resultado = authService.iniciarSesion(correo, contraseña)
-                if (resultado.isSuccess) {
-                    Toast.makeText(context, "Sesión iniciada correctamente", Toast.LENGTH_LONG)
-                        .show()
-                    onLogin()
-                    cargando = false
-                }
-                else if(resultado.isFailure){
-                    Toast.makeText(context, "Algo falló", Toast.LENGTH_LONG).show()
-                    cargando = false
-                }
-                else {
-                    Toast.makeText(context, "Datos incorrectos", Toast.LENGTH_LONG).show()
-                    cargando = false
-                }
+            Button(
+                onClick = {
+                    onGoToRegister()
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(text = "Registrarme")
             }
-        }, modifier = Modifier.padding(4.dp)) {
-            Text(text = "Iniciar sesión")
-        }
-        Text("O...")
-        Button(onClick = { onGoToRegister()
-        }, modifier = Modifier.padding(4.dp)) {
-            Text(text = "Registrarme")
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        val resultado = authService.loginWithGoogle(context)
+                        if (resultado.isSuccess) {
+                            Toast.makeText(
+                                context,
+                                "Sesión iniciada correctamente",
+                                Toast.LENGTH_LONG
+                            )
+                                .show()
+                            onLogin()
+                            cargando = false
+                        } else if (resultado.isFailure) {
+                            Toast.makeText(context, "Algo falló", Toast.LENGTH_LONG).show()
+                            cargando = false
+                        } else {
+                            Toast.makeText(context, "Datos incorrectos", Toast.LENGTH_LONG).show()
+                            cargando = false
+                        }
+                    }
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) {
+                Text("Iniciar sesión con Google")
+            }
         }
     }
 }
@@ -143,7 +190,7 @@ fun LoginScreenPreview() {
                     .fillMaxWidth()
                     .fillMaxHeight()
             ) {
-               LoginScreen({},{})
+                LoginScreen({}, {})
             }
         }
     }

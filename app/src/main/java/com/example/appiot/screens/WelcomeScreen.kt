@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -44,7 +47,7 @@ import com.example.appiot.service.auth.AuthService
 import com.example.appiot.ui.theme.AppIOTTheme
 
 @Composable
-fun WelcomeScreen(modifier: Modifier = Modifier) {
+fun WelcomeScreen(onLogOut:()-> Unit, modifier: Modifier = Modifier) {
     val authService = remember { AuthService() }
     var correo by rememberSaveable { mutableStateOf("") }
     val email = authService.usuarioActual?.email
@@ -53,9 +56,10 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
     }
 
     Column(
-        verticalArrangement = Arrangement.Top,
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .navigationBarsPadding()
             .fillMaxHeight()
             .fillMaxWidth()
     ) {
@@ -64,22 +68,38 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Start,
             fontSize = 16.sp,
-            modifier = Modifier
+            modifier = Modifier.padding(8.dp)
         )
-        Button(onClick = {
-            authService.cerrarSesion()
-        }, modifier = Modifier.padding(4.dp)) {
-            Text(text = "Cerrar sesión")
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(200.dp)
+        ) {
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Conectar dispositivo")
+            }
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Ver datos historicos")
+            }
+            Button(onClick = {
+                authService.cerrarSesion()
+                onLogOut()
+            }, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Cerrar sesión")
+            }
         }
     }
+
 }
 
 @Composable
 fun WelcomeScreenContent(modifier: Modifier = Modifier) {
     Column(
-        verticalArrangement = Arrangement.Top,
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .navigationBarsPadding()
             .fillMaxHeight()
             .fillMaxWidth()
     ) {
@@ -88,8 +108,24 @@ fun WelcomeScreenContent(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Start,
             fontSize = 16.sp,
-            modifier = Modifier
+            modifier = Modifier.padding(8.dp)
         )
+
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(200.dp)
+        ) {
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Conectar dispositivo")
+            }
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Ver datos historicos")
+            }
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Cerrar sesión")
+            }
+        }
     }
 }
 
