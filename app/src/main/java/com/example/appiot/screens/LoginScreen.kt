@@ -1,10 +1,7 @@
 package com.example.appiot.screens
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -37,13 +34,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import com.example.appiot.R
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-
 import com.example.appiot.service.auth.AuthService
 import com.example.appiot.ui.theme.AppIOTTheme
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(onLogin: () -> Unit, onGoToRegister: () -> Unit, modifier: Modifier = Modifier) {
