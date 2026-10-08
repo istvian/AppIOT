@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 sealed class BleConnectionState {
@@ -19,9 +20,10 @@ sealed class BleConnectionState {
 
 class BleConnectionManager(private val context: Context) {
 
-    private var bluetoothGatt: BluetoothGatt? = null
-
+    var bluetoothGatt: BluetoothGatt? = null
     var connectionState = MutableStateFlow<BleConnectionState>(BleConnectionState.Disconnected)
+    val connectedDevice = MutableStateFlow<BluetoothDevice?>(null)
+
 
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
@@ -33,19 +35,24 @@ class BleConnectionManager(private val context: Context) {
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         Log.d("BLE", "Conectado a $deviceAddress. Descubriendo servicios...")
-                        connectionState.value = BleConnectionState.Connected(deviceName, deviceAddress)
-                        // Inmediatamente después de conectar, es obligatorio descubrir los servicios
+                        connectedDevice.value =
+                            gatt.device // 👈 ACTUALIZAR EL DISPOSITIVO CONECTADO
+                        connectionState.value =
+                            BleConnectionState.Connected(deviceName, deviceAddress)
                         gatt.discoverServices()
                     }
+
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         Log.d("BLE", "Desconectado de $deviceAddress")
+                        connectedDevice.value = null // 👈 LIMPIAR AL DESCONECTAR
                         connectionState.value = BleConnectionState.Disconnected
                         cerrarConexion()
                     }
                 }
             } else {
                 Log.e("BLE", "Fallo de conexión o error GATT: $status")
-                connectionState.value = BleConnectionState.Error("Error al conectar (Código: $status)")
+                connectionState.value =
+                    BleConnectionState.Error("Error al conectar (Código: $status)")
                 cerrarConexion()
             }
         }

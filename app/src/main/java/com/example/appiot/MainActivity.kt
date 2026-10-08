@@ -1,5 +1,6 @@
 package com.example.appiot
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,15 +21,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.appiot.screens.ConectarScreen
+import com.example.appiot.screens.HistoricoScreenContent
 import com.example.appiot.screens.LoginScreen
+import com.example.appiot.screens.RealtimeScreenContent
 import com.example.appiot.screens.RegisterScreen
 import com.example.appiot.screens.WelcomeScreen
 import com.example.appiot.service.auth.AuthService
+import com.example.appiot.service.ble.BleConnectionManager
+import com.example.appiot.service.ble.BleScannerManager
 import com.example.appiot.ui.theme.AppIOTTheme
 
 class MainActivity : ComponentActivity() {
+    private lateinit var scannerManager: BleScannerManager
+    private lateinit var connectionManager: BleConnectionManager
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        scannerManager = BleScannerManager(applicationContext)
+        connectionManager = BleConnectionManager(applicationContext)
         enableEdgeToEdge()
         setContent {
             AppIOTTheme {
@@ -41,17 +52,28 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Top
                     ) {
-                        AppNavegacion()
+                        AppNavegacion(
+                            scannerManager,
+                            connectionManager
+                        )
                     }
                 }
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        connectionManager.cerrarConexion()
+    }
 }
 
-
+@SuppressLint("MissingPermission")
 @Composable
-fun AppNavegacion() {
+fun AppNavegacion(
+    scannerManager: BleScannerManager,
+    connectionManager: BleConnectionManager
+) {
     val navController = rememberNavController()
     val authService = remember { AuthService() }
 
@@ -63,7 +85,8 @@ fun AppNavegacion() {
             launchSingleTop = true
         }
     }
-    fun navTo(ruta:String){
+
+    fun navTo(ruta: String) {
         navController.navigate((ruta))
     }
 
@@ -71,16 +94,16 @@ fun AppNavegacion() {
         navController = navController, startDestination = "login"
     ) {
         composable("login") {
-            LoginScreen(
-                onLogin = {
-                    redirectTo("welcome")
-                },
-                onGoToRegister = { navTo("register") })
+            LoginScreen(onLogin = {
+                redirectTo("welcome")
+            }, onGoToRegister = { navTo("register") })
         }
         composable("welcome") {
-            WelcomeScreen(onLogOut = {
-                redirectTo("login")
-            }, onConectar = { navTo("conectar") })
+            WelcomeScreen(navigation = { url ->
+                navTo(url)
+            }, redirect = { url ->
+                redirectTo(url)
+            }, connectionManager)
         }
         composable("register") {
             RegisterScreen(onRegister = {
@@ -88,7 +111,16 @@ fun AppNavegacion() {
             })
         }
         composable("conectar") {
-            ConectarScreen()
+            ConectarScreen(
+                scannerManager = scannerManager,
+                connectionManager = connectionManager,
+            )
+        }
+        composable("realtime") {
+            RealtimeScreenContent()
+        }
+        composable("historico") {
+            HistoricoScreenContent()
         }
     }
     if (authService.estaAutenticado) {
@@ -96,19 +128,3 @@ fun AppNavegacion() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun AppNavegacionPreview() {
-    AppIOTTheme {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-            ) {
-                AppNavegacion()
-            }
-        }
-    }
-}

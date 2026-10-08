@@ -1,5 +1,6 @@
 package com.example.appiot.screens
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,15 +33,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appiot.service.auth.AuthService
+import com.example.appiot.service.ble.BleConnectionManager
 import com.example.appiot.ui.theme.AppIOTTheme
 
-
+@SuppressLint("MissingPermission")
 @Composable
-fun WelcomeScreen(onLogOut: () -> Unit, onConectar: ()-> Unit, modifier: Modifier = Modifier) {
+fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, connectionManager: BleConnectionManager, modifier: Modifier = Modifier) {
     val authService = remember { AuthService() }
     var correo by rememberSaveable { mutableStateOf("") }
     val email = authService.usuarioActual?.email
     val context = LocalContext.current
+    val device by connectionManager.connectedDevice.collectAsState()
     if (!email.isNullOrBlank()) {
         correo = email
     }
@@ -82,7 +86,7 @@ fun WelcomeScreen(onLogOut: () -> Unit, onConectar: ()-> Unit, modifier: Modifie
                     onClick = {
                         cerrarSesion=false
                         authService.cerrarSesion()
-                        onLogOut()
+                        redirect("login")
                     }
                 ) {
                     Text("Cerrar sesión")
@@ -106,7 +110,7 @@ fun WelcomeScreen(onLogOut: () -> Unit, onConectar: ()-> Unit, modifier: Modifie
     ) {
         Row() {
             Text(
-                text = "Bienvenido/a correo",
+                text = "Bienvenido/a ${correo}",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -115,7 +119,7 @@ fun WelcomeScreen(onLogOut: () -> Unit, onConectar: ()-> Unit, modifier: Modifie
         }
         Row() {
             Text(
-                text = "Dispositivo desconectado",
+                text = if (device == null) "Dispositivo desconectado" else "${device!!.name} conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -129,10 +133,13 @@ fun WelcomeScreen(onLogOut: () -> Unit, onConectar: ()-> Unit, modifier: Modifie
                 .width(200.dp)
                 .fillMaxHeight()
         ) {
-            Button(onClick = {onConectar()}, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = {navigation("conectar")}, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Conectar dispositivo")
             }
-            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = {navigation("realtime")}, modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Ver tiempo real")
+            }
+            Button(onClick = {navigation("historico")}, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Ver datos historicos")
             }
             Button(onClick = {

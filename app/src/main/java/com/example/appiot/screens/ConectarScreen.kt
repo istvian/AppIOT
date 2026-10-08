@@ -1,10 +1,13 @@
 package com.example.appiot.screens
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,20 +46,24 @@ import com.example.appiot.service.ble.BleConnectionState
 import com.example.appiot.service.ble.BleScannerManager
 import com.example.appiot.ui.theme.AppIOTTheme
 
+@SuppressLint("MissingPermission")
 @Composable
-fun ConectarScreen(modifier: Modifier = Modifier) {
+fun ConectarScreen(
+    modifier: Modifier = Modifier, scannerManager: BleScannerManager,
+    connectionManager: BleConnectionManager,
+) {
     val context = LocalContext.current
-    val scannerManager = remember { BleScannerManager(context) }
     val devices by scannerManager.scannedDevices.collectAsStateWithLifecycle()
     val isScanning by scannerManager.scanning.collectAsStateWithLifecycle()
-    val connectionStatus by BleConnectionManager(context).connectionState.collectAsStateWithLifecycle()
+    val device by connectionManager.connectedDevice.collectAsState()
+
+    device?.let { Log.d("App", "Actualmente conectado a ${it.name}") }
 
     // 1. Determinar permisos según la versión de Android
     val requiredPermissions = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT
+                Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT
             )
         } else {
             arrayOf(
@@ -73,9 +81,7 @@ fun ConectarScreen(modifier: Modifier = Modifier) {
             scannerManager.scanLeDevice()
         } else {
             Toast.makeText(
-                context,
-                "Se requieren permisos para escanear Bluetooth",
-                Toast.LENGTH_SHORT
+                context, "Se requieren permisos para escanear Bluetooth", Toast.LENGTH_SHORT
             ).show()
         }
     }
@@ -96,7 +102,7 @@ fun ConectarScreen(modifier: Modifier = Modifier) {
     ) {
         Row() {
             Text(
-                text = "Dispositivo desconectado",
+                text = if (device == null) "Dispositivo desconectado" else "${device!!.name} conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -110,13 +116,13 @@ fun ConectarScreen(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = if(isScanning)"Buscando dispositivos" else "Buscador de dispositivos",
+                text = if (isScanning) "Buscando dispositivos" else "Buscador de dispositivos",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
                 modifier = Modifier.padding(8.dp)
             )
-            Button(onClick = { permissionLauncher.launch(requiredPermissions)}) {
+            Button(onClick = { permissionLauncher.launch(requiredPermissions) }) {
                 Text(text = if (isScanning) "Buscando..." else "Escanear")
             }
         }
@@ -142,12 +148,10 @@ fun ConectarScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            BleConnectionManager(context).conectar(item.device)
+                            connectionManager.conectar(item.device)
                             // Conectar con item.device
                         }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                        .padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text(text = item.name, fontWeight = FontWeight.Bold)
                         Text(text = item.address, style = MaterialTheme.typography.bodySmall)
@@ -222,9 +226,7 @@ fun ConectarScreenContent(modifier: Modifier = Modifier) {
                         .clickable {
                             // Conectar con item.device
                         }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                        .padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Text(text = nombre, fontWeight = FontWeight.Bold)
                         Text(text = nombre, style = MaterialTheme.typography.bodySmall)
