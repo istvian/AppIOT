@@ -1,8 +1,10 @@
 package com.example.appiot.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CalendarLocale
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
@@ -48,16 +51,141 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import com.example.appiot.models.Medicion
 import com.example.appiot.service.ble.BleConnectionManager
+import com.example.appiot.service.store.FirestoreManager
+import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+
+
+@Composable
+fun HistoricoScreen(modifier: Modifier = Modifier) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
+
+    // 1. Estados para almacenar los datos recibidos y el estado de carga
+    var mediciones by remember { mutableStateOf<List<Medicion>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    val handleDismiss = { showDatePicker = false }
+
+    val handleDateSelected: (Long?) -> Unit = { millis ->
+        selectedDateMillis = millis
+        showDatePicker = false
+    }
+
+    LaunchedEffect(selectedDateMillis) {
+        val millis = selectedDateMillis
+        if (millis != null) {
+            isLoading = true
+
+            // Convertimos los milisegundos del DatePicker a Timestamp de Firebase
+            val fechaTimestamp = Timestamp(Date(millis))
+
+            // Llamada a tu función suspend
+            val result = FirestoreManager().obtenerMediciones(fechaTimestamp)
+
+            result.onSuccess { listaObtenida ->
+                mediciones = listaObtenida
+                Log.d("Datos descargados", "cantidad: ${listaObtenida.size}")
+            }.onFailure { error ->
+                Log.e("FirestoreError", "Error al obtener mediciones", error)
+            }
+
+            isLoading = false
+        }
+    }
+
+    Column(
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .navigationBarsPadding()
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+
+        Text(
+            text = "Datos historicos",
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start,
+            fontSize = 20.sp,
+        )
+        Button(onClick = {
+            showDatePicker = true
+        }) { Text(text = "Seleccionar fecha") }
+
+        if (showDatePicker) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedDateMillis
+            )
+
+            DatePickerDialog(onDismissRequest = handleDismiss, confirmButton = {
+                TextButton(
+                    onClick = { handleDateSelected(datePickerState.selectedDateMillis) },
+                    enabled = datePickerState.selectedDateMillis != null
+                ) {
+                    Text("Aceptar")
+                }
+            }, dismissButton = {
+                TextButton(onClick = handleDismiss) {
+                    Text("Cancelar")
+                }
+            }) {
+                DatePicker(state = datePickerState)
+            }
+
+        }
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 4. Renderizar las mediciones reales
+                items(mediciones) { medicion ->
+
+                    // Formatear la fecha/hora de la medición para mostrar (ej: "07:35 hrs.")
+                    val horaFormateada = remember(medicion.fecha) {
+                        val sdf = SimpleDateFormat("HH:mm 'hrs.'", Locale.getDefault())
+                        sdf.format(medicion.fecha.toDate())
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { /* Acción al presionar la medición */ },
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(text = horaFormateada, fontSize = 12.sp)
+                        }
+                        Text(text = "${medicion.temperatura}°C", fontSize = 12.sp)
+                        Text(text = "${medicion.humedad} %", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+
+
+}
 
 @Composable
 fun HistoricoScreenContent(modifier: Modifier = Modifier) {
@@ -99,22 +227,18 @@ fun HistoricoScreenContent(modifier: Modifier = Modifier) {
                 initialSelectedDateMillis = selectedDateMillis
             )
 
-            DatePickerDialog(
-                onDismissRequest = handleDismiss,
-                confirmButton = {
-                    TextButton(
-                        onClick = { handleDateSelected(datePickerState.selectedDateMillis) },
-                        enabled = datePickerState.selectedDateMillis != null
-                    ) {
-                        Text("Aceptar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = handleDismiss) {
-                        Text("Cancelar")
-                    }
+            DatePickerDialog(onDismissRequest = handleDismiss, confirmButton = {
+                TextButton(
+                    onClick = { handleDateSelected(datePickerState.selectedDateMillis) },
+                    enabled = datePickerState.selectedDateMillis != null
+                ) {
+                    Text("Aceptar")
                 }
-            ) {
+            }, dismissButton = {
+                TextButton(onClick = handleDismiss) {
+                    Text("Cancelar")
+                }
+            }) {
                 DatePicker(state = datePickerState)
             }
 
@@ -130,8 +254,7 @@ fun HistoricoScreenContent(modifier: Modifier = Modifier) {
                         .fillMaxWidth()
                         .clickable {
                             // Conectar con item.device
-                        },
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        }, horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text(text = "07:35 hrs.", fontSize = 12.sp)

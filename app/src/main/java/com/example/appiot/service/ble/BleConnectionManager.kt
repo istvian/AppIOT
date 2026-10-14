@@ -10,12 +10,19 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.appiot.models.Medicion
+import com.example.appiot.service.store.FirestoreManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.UUID
 
 sealed class BleConnectionState {
@@ -124,11 +131,25 @@ class BleConnectionManager(private val context: Context) {
         }
     }
 
+
     private fun procesarDatos(bytes: ByteArray?) {
         if (bytes != null && bytes.isNotEmpty()) {
             val texto = String(bytes, Charsets.UTF_8)
             Log.d("BLE", "Datos recibidos: $texto")
-
+            CoroutineScope(Dispatchers.IO).launch {
+                val json = JSONObject(texto)
+                var medicion = Medicion()
+                if (json.has("temperatura")) {
+                    medicion.temperatura = json.getDouble("temperatura")
+                }
+                if (json.has("humedad")) {
+                    medicion.humedad = json.getDouble("humedad")
+                }
+                if (json.has("emisor")) {
+                    medicion.emisor = json.getString("emisor")
+                }
+                FirestoreManager().guardarMedicion(medicion.emisor, medicion.humedad, medicion.temperatura )
+            }
             // Emitir el valor al SharedFlow (utilizamos tryEmit en callbacks)
             _receivedData.tryEmit(texto)
         }
@@ -164,7 +185,7 @@ class BleConnectionManager(private val context: Context) {
 
         bluetoothGatt = device.connectGatt(
             context,
-            false,
+            true,
             gattCallback,
             BluetoothDevice.TRANSPORT_LE
         )

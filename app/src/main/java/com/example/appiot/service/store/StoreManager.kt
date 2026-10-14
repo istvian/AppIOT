@@ -3,6 +3,7 @@ package com.example.appiot.service.store
 import com.example.appiot.models.Medicion
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.toObject
@@ -10,6 +11,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.time.ZoneId
+import java.util.Calendar
 
 class FirestoreManager {
 
@@ -22,9 +25,7 @@ class FirestoreManager {
         get() = auth.currentUser?.uid
 
     suspend fun guardarMedicion(
-        emisor: String,
-        humedad: Number,
-        temperatura: Number
+        emisor: String, humedad: Number, temperatura: Number
     ): Result<Boolean> {
         return runCatching {
             val uid = currentUserId ?: throw Exception("Usuario no autenticado")
@@ -46,11 +47,32 @@ class FirestoreManager {
     }
 
 
-    suspend fun obtenerMediciones(): Result<List<Medicion>> {
+    suspend fun obtenerMediciones(fecha: Timestamp): Result<List<Medicion>> {
         return runCatching {
             val uid = currentUserId ?: throw Exception("Usuario no autenticado")
 
+            // Configurar inicio del día (00:00:00.000)
+            val calendar = Calendar.getInstance().apply {
+                time = fecha.toDate()
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val inicioDia = Timestamp(calendar.time)
+
+            // Configurar fin del día (23:59:59.999)
+            calendar.apply {
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            val finDia = Timestamp(calendar.time)
+
             val snapshot = db.collection(COLLECTION_MEDICION)
+                .whereGreaterThanOrEqualTo("fecha", inicioDia)
+                .whereLessThanOrEqualTo("fecha", finDia)
                 .orderBy("fecha", Query.Direction.DESCENDING)
                 .get()
                 .await()
@@ -67,19 +89,19 @@ class FirestoreManager {
             return@callbackFlow
         }
 
-        val listener = db.collection(COLLECTION_MEDICION)
-            .orderBy("fecha", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
+        val listener =
+            db.collection(COLLECTION_MEDICION).orderBy("fecha", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        close(error)
+                        return@addSnapshotListener
+                    }
 
-                if (snapshot != null) {
-                    val mediciones = snapshot.documents.mapNotNull { it.toObject<Medicion>() }
-                    trySend(mediciones)
+                    if (snapshot != null) {
+                        val mediciones = snapshot.documents.mapNotNull { it.toObject<Medicion>() }
+                        trySend(mediciones)
+                    }
                 }
-            }
 
         // Se ejecuta cuando el Flow se cancela o deja de usarse
         awaitClose { listener.remove() }

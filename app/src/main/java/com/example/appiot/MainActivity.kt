@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.appiot.screens.ConectarScreen
+import com.example.appiot.screens.HistoricoScreen
 import com.example.appiot.screens.HistoricoScreenContent
 import com.example.appiot.screens.LoginScreen
 import com.example.appiot.screens.RealtimeScreen
@@ -119,7 +120,7 @@ fun AppNavegacion(
             RealtimeScreen(connectionManager)
         }
         composable("historico") {
-            HistoricoScreenContent()
+            HistoricoScreen()
         }
     }
     if (authService.estaAutenticado) {
