@@ -16,14 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.appiot.screens.ConectarScreen
 import com.example.appiot.screens.HistoricoScreenContent
 import com.example.appiot.screens.LoginScreen
-import com.example.appiot.screens.RealtimeScreenContent
+import com.example.appiot.screens.RealtimeScreen
 import com.example.appiot.screens.RegisterScreen
 import com.example.appiot.screens.WelcomeScreen
 import com.example.appiot.service.auth.AuthService
@@ -117,7 +116,7 @@ fun AppNavegacion(
             )
         }
         composable("realtime") {
-            RealtimeScreenContent()
+            RealtimeScreen(connectionManager)
         }
         composable("historico") {
             HistoricoScreenContent()
