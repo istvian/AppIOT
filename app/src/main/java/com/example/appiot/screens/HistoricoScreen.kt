@@ -146,6 +146,34 @@ fun HistoricoScreen(modifier: Modifier = Modifier) {
             }
 
         }
+        val millis = selectedDateMillis
+        val fechaTexto = remember(millis) {
+            if (millis != null) {
+                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply {
+                    timeZone = TimeZone.getTimeZone("UTC") // Evita la conversión a hora local
+                }
+                formatter.format(Date(millis))
+            } else {
+                ""
+            }
+        }
+
+        Text(text = fechaTexto)
+
+        if (mediciones.isEmpty()) {
+            Text(text = "Sin datos", fontSize = 12.sp)
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { /* Acción al presionar la medición */ },
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "Hora", fontSize = 12.sp)
+                Text(text = "Temperatura", fontSize = 12.sp)
+                Text(text = "Humedad", fontSize = 12.sp)
+            }
+        }
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -158,10 +186,8 @@ fun HistoricoScreen(modifier: Modifier = Modifier) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 4. Renderizar las mediciones reales
                 items(mediciones) { medicion ->
 
-                    // Formatear la fecha/hora de la medición para mostrar (ej: "07:35 hrs.")
                     val horaFormateada = remember(medicion.fecha) {
                         val sdf = SimpleDateFormat("HH:mm 'hrs.'", Locale.getDefault())
                         sdf.format(medicion.fecha.toDate())
@@ -173,9 +199,7 @@ fun HistoricoScreen(modifier: Modifier = Modifier) {
                             .clickable { /* Acción al presionar la medición */ },
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
-                            Text(text = horaFormateada, fontSize = 12.sp)
-                        }
+                        Text(text = horaFormateada, fontSize = 12.sp)
                         Text(text = "${medicion.temperatura}°C", fontSize = 12.sp)
                         Text(text = "${medicion.humedad} %", fontSize = 12.sp)
                     }

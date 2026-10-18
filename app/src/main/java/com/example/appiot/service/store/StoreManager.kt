@@ -1,5 +1,6 @@
 package com.example.appiot.service.store
 
+import android.util.Log
 import com.example.appiot.models.Medicion
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.time.ZoneId
 import java.util.Calendar
+import java.util.TimeZone
 
 class FirestoreManager {
 
@@ -25,7 +27,7 @@ class FirestoreManager {
         get() = auth.currentUser?.uid
 
     suspend fun guardarMedicion(
-        emisor: String, humedad: Number, temperatura: Number
+        emisor: String, humedad: Double, temperatura: Double
     ): Result<Boolean> {
         return runCatching {
             val uid = currentUserId ?: throw Exception("Usuario no autenticado")
@@ -51,24 +53,37 @@ class FirestoreManager {
         return runCatching {
             val uid = currentUserId ?: throw Exception("Usuario no autenticado")
 
-            // Configurar inicio del día (00:00:00.000)
-            val calendar = Calendar.getInstance().apply {
+            // 1. Extraer año, mes y día en UTC (tal como los eligió el usuario en el DatePicker)
+            val calendarUtc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                 time = fecha.toDate()
+            }
+            val anio = calendarUtc.get(Calendar.YEAR)
+            val mes = calendarUtc.get(Calendar.MONTH)
+            val dia = calendarUtc.get(Calendar.DAY_OF_MONTH)
+
+            // 2. Crear el inicio del día (00:00:00.000) en la zona horaria LOCAL
+            val calendarLocal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, anio)
+                set(Calendar.MONTH, mes)
+                set(Calendar.DAY_OF_MONTH, dia)
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-            val inicioDia = Timestamp(calendar.time)
+            val inicioDia = Timestamp(calendarLocal.time)
 
-            // Configurar fin del día (23:59:59.999)
-            calendar.apply {
+            // 3. Crear el fin del día (23:59:59.999) en la zona horaria LOCAL
+            calendarLocal.apply {
                 set(Calendar.HOUR_OF_DAY, 23)
                 set(Calendar.MINUTE, 59)
                 set(Calendar.SECOND, 59)
                 set(Calendar.MILLISECOND, 999)
             }
-            val finDia = Timestamp(calendar.time)
+            val finDia = Timestamp(calendarLocal.time)
+
+            Log.d("InicioLocal", inicioDia.toDate().toString())
+            Log.d("FinLocal", finDia.toDate().toString())
 
             val snapshot = db.collection(COLLECTION_MEDICION)
                 .whereGreaterThanOrEqualTo("fecha", inicioDia)

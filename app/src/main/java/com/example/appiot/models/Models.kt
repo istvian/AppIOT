@@ -6,8 +6,8 @@ data class Medicion(
     var id: String = "",
     var emisor: String = "",
     var macs: String ="",
-    var humedad: Number = 0,
-    var temperatura: Number = 0,
+    var humedad: Double = 0.0,
+    var temperatura: Double = 0.0,
     var fecha: Timestamp = Timestamp.now()
 )
 
