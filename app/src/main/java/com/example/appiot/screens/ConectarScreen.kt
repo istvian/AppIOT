@@ -2,6 +2,7 @@ package com.example.appiot.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -46,11 +47,12 @@ import com.example.appiot.service.ble.BleConnectionState
 import com.example.appiot.service.ble.BleScannerManager
 import com.example.appiot.ui.theme.AppIOTTheme
 
-@SuppressLint("MissingPermission")
+@SuppressLint("MissingPermission", "UseKtx")
 @Composable
 fun ConectarScreen(
     modifier: Modifier = Modifier, scannerManager: BleScannerManager,
     connectionManager: BleConnectionManager,
+    onConnected: ()-> Unit
 ) {
     val context = LocalContext.current
     val devices by scannerManager.scannedDevices.collectAsStateWithLifecycle()
@@ -85,9 +87,17 @@ fun ConectarScreen(
             ).show()
         }
     }
-
+    fun getBleSignalQuality(rssi: Int): String = when {
+        rssi >= -50 -> "Excelente"
+        rssi >= -67 -> "Buena"
+        rssi >= -80 -> "Regular"
+        rssi >= -90 -> "Débil"
+        rssi >= -100 -> "Crítica"
+        else -> "Sin Señal"
+    }
     // 3. Detener el escaneo si la pantalla sale de composición
     DisposableEffect(Unit) {
+        permissionLauncher.launch(requiredPermissions)
         onDispose {
             scannerManager.scanLeDevice() // Si estaba escaneando, lo apaga
         }
@@ -102,7 +112,7 @@ fun ConectarScreen(
     ) {
         Row() {
             Text(
-                text = if (device == null) "Dispositivo desconectado" else "${device!!.name} conectado",
+                text = if (device == null) "Dispositivo desconectado" else "Conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -140,23 +150,27 @@ fun ConectarScreen(
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Top,
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(devices, key = { it.address }) { item ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            connectionManager.conectar(item.device)
-                            // Conectar con item.device
+                if (item.name == "ESP32_BLE") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                connectionManager.conectar(item.device)
+                                val prefs = context.getSharedPreferences("ble_prefs", Context.MODE_PRIVATE)
+                                prefs.edit().putString("LAST_MAC_ADDRESS", item.address).apply()
+                                onConnected()
+                            }
+                            .padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text(text = item.name, fontWeight = FontWeight.Bold)
+                            Text(text = item.address, style = MaterialTheme.typography.bodySmall)
                         }
-                        .padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column {
-                        Text(text = item.name, fontWeight = FontWeight.Bold)
-                        Text(text = item.address, style = MaterialTheme.typography.bodySmall)
+                        Text(text = "Señal: ${getBleSignalQuality(item.rssi)}")
                     }
-                    Text(text = "${item.rssi} dBm")
                 }
             }
         }

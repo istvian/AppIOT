@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -89,7 +90,7 @@ class FirestoreManager {
                 .whereGreaterThanOrEqualTo("fecha", inicioDia)
                 .whereLessThanOrEqualTo("fecha", finDia)
                 .orderBy("fecha", Query.Direction.DESCENDING)
-                .get()
+                .get(Source.CACHE)
                 .await()
 
             snapshot.documents.mapNotNull { it.toObject<Medicion>() }

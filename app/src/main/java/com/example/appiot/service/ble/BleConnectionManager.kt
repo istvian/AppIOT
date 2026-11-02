@@ -1,11 +1,13 @@
 package com.example.appiot.service.ble
 
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Build
@@ -32,6 +34,7 @@ sealed class BleConnectionState {
     data class Error(val message: String) : BleConnectionState()
 }
 
+@SuppressLint("ServiceCast")
 class BleConnectionManager(private val context: Context) {
 
     // UUIDs configurados en el ESP32
@@ -39,6 +42,11 @@ class BleConnectionManager(private val context: Context) {
     private val CHARACTERISTIC_UUID = UUID.fromString("beb5483e-36e1-4688-b7f5-ea07361b26a8")
     // UUID estándar de Bluetooth para habilitar notificaciones (CCCD)
     private val CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+    private val bluetoothAdapter: BluetoothAdapter? by lazy {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        bluetoothManager?.adapter
+    }
 
     var bluetoothGatt: BluetoothGatt? = null
     var connectionState = MutableStateFlow<BleConnectionState>(BleConnectionState.Disconnected)
@@ -189,6 +197,37 @@ class BleConnectionManager(private val context: Context) {
             gattCallback,
             BluetoothDevice.TRANSPORT_LE
         )
+    }
+
+
+
+    @SuppressLint("MissingPermission")
+    fun reconectar(macAddress: String) {
+        // 1. Validar si el formato de la MAC es válido
+        if (!BluetoothAdapter.checkBluetoothAddress(macAddress)) {
+            Log.e("BLE", "Dirección MAC no válida: $macAddress")
+            connectionState.value = BleConnectionState.Error("Dirección MAC no válida")
+            return
+        }
+
+        // 2. Verificar disponibilidad de Bluetooth
+        val adapter = bluetoothAdapter
+        if (adapter == null || !adapter.isEnabled) {
+            Log.e("BLE", "Bluetooth desactivado o no disponible")
+            connectionState.value = BleConnectionState.Error("Bluetooth no disponible")
+            return
+        }
+
+        try {
+            // 3. Obtener la instancia de BluetoothDevice a partir del String de la MAC
+            val device: BluetoothDevice = adapter.getRemoteDevice(macAddress)
+
+            // 4. Reutilizar la función conectar existente
+            conectar(device)
+        } catch (e: IllegalArgumentException) {
+            Log.e("BLE", "Error al obtener dispositivo con MAC $macAddress", e)
+            connectionState.value = BleConnectionState.Error("Dispositivo no encontrado")
+        }
     }
 
     @SuppressLint("MissingPermission")

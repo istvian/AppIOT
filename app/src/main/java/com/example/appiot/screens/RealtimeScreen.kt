@@ -77,7 +77,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                 ultimaActualizacion = "Última actualización: hace 5 segundos"
             } catch (e: Exception) {
                 // Si el ESP32 no envía JSON sino texto plano
-                Log.d("Error","ocurrio un error")
+                Log.d("Error", "ocurrio un error")
                 ultimaActualizacion = "Dato bruto: $rawJson"
             }
         }
@@ -101,16 +101,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
         }
         Row() {
             Text(
-                text = "Conectado BLE a: ${connectedDevice?.address}",
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Start,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(8.dp)
-            )
-        }
-        Row() {
-            Text(
-                text = "Data enviada por: $emisor (ESP-NOW)",
+                text = "Conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,

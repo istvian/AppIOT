@@ -114,6 +114,7 @@ fun AppNavegacion(
             ConectarScreen(
                 scannerManager = scannerManager,
                 connectionManager = connectionManager,
+                onConnected = {redirectTo("welcome")}
             )
         }
         composable("realtime") {

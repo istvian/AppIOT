@@ -2,6 +2,7 @@ package com.example.appiot.screens
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,7 +41,12 @@ import com.example.appiot.ui.theme.AppIOTTheme
 
 @SuppressLint("MissingPermission")
 @Composable
-fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, connectionManager: BleConnectionManager, modifier: Modifier = Modifier) {
+fun WelcomeScreen(
+    navigation: (url: String) -> Unit,
+    redirect: (url: String) -> Unit,
+    connectionManager: BleConnectionManager,
+    modifier: Modifier = Modifier
+) {
     val authService = remember { AuthService() }
     var correo by rememberSaveable { mutableStateOf("") }
     val email = authService.usuarioActual?.email
@@ -50,7 +58,44 @@ fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, co
 
     var mostrarDialogo by remember { mutableStateOf(false) }
     var cerrarSesion by remember { mutableStateOf(false) }
+    var mostrarDialogoDesconexion by remember { mutableStateOf(false) }
 
+
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("ble_prefs", Context.MODE_PRIVATE)
+        val mac = prefs.getString("LAST_MAC_ADDRESS", null)
+        if (mac != null) {
+            connectionManager.reconectar(mac)
+        }
+    }
+
+    BackHandler {
+        mostrarDialogoDesconexion = true
+    }
+    if (mostrarDialogoDesconexion) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoDesconexion = false },
+            title = { Text(text = "Desconectar y olvidar dispositivo") },
+            text = { Text(text = "¿Estás seguro de que deseas desconectar el dispositivo?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        connectionManager.desconectar()
+                        val prefs = context.getSharedPreferences("ble_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().remove("LAST_MAC_ADDRESS").apply()
+                        mostrarDialogoDesconexion = false
+                    }
+                ) {
+                    Text("Desconectar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoDesconexion = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
     BackHandler {
         mostrarDialogo = true
     }
@@ -84,7 +129,7 @@ fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, co
             confirmButton = {
                 TextButton(
                     onClick = {
-                        cerrarSesion=false
+                        cerrarSesion = false
                         authService.cerrarSesion()
                         redirect("login")
                     }
@@ -119,7 +164,7 @@ fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, co
         }
         Row() {
             Text(
-                text = if (device == null) "Dispositivo desconectado" else "${device!!.name} conectado",
+                text = if (device == null) "Dispositivo desconectado" else "Conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -133,17 +178,26 @@ fun WelcomeScreen(navigation:(url:String)->Unit, redirect:(url:String)->Unit, co
                 .width(200.dp)
                 .fillMaxHeight()
         ) {
-            Button(onClick = {navigation("conectar")}, modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Conectar dispositivo")
+            if (device != null) {
+                Button(onClick = {
+                    mostrarDialogoDesconexion = true
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Desconectar dispositivo")
+                }
+                Button(onClick = { navigation("realtime") }, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Ver tiempo real")
+                }
+            } else {
+                Button(onClick = { navigation("conectar") }, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = "Conectar dispositivo")
+                }
             }
-            Button(onClick = {navigation("realtime")}, modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Ver tiempo real")
-            }
-            Button(onClick = {navigation("historico")}, modifier = Modifier.fillMaxWidth()) {
+
+            Button(onClick = { navigation("historico") }, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Ver datos historicos")
             }
             Button(onClick = {
-                cerrarSesion= true
+                cerrarSesion = true
             }, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Cerrar sesión")
             }
