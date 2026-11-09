@@ -1,6 +1,8 @@
 package com.example.appiot.screens
 
+import android.os.Debug
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,11 +42,17 @@ import com.example.appiot.service.ble.BleConnectionState
 import com.example.appiot.ui.theme.AppIOTTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.json.JSONObject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 
 @Composable
 fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var intervaloActualizacion by remember { mutableStateOf(5) }
+    var temperaturaMinima by remember { mutableStateOf(2) }
 
     // 1. Estados para almacenar los datos recibidos del ESP32
     var temperatura by remember { mutableStateOf("--") }
@@ -65,6 +74,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
             try {
                 // Parsear el JSON recibido (ejemplo: {"temperatura": 24.5, "humedad": 60})
                 val json = JSONObject(rawJson)
+                Log.d("Json",rawJson)
                 if (json.has("temperatura")) {
                     temperatura = "${json.getDouble("temperatura")}"
                 }
@@ -77,7 +87,8 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                 ultimaActualizacion = "Última actualización: hace 5 segundos"
             } catch (e: Exception) {
                 // Si el ESP32 no envía JSON sino texto plano
-                Log.d("Error", "ocurrio un error")
+                Log.d("Error", e.toString())
+                Log.d("JSONError", rawJson)
                 ultimaActualizacion = "Dato bruto: $rawJson"
             }
         }
@@ -144,32 +155,103 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
         }
         Column(
             modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+                .padding(8.dp)
+                .width(300.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Estadisticas",
+                text = "Configuración",
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold
             )
-            Text(
-                text = "A las 03:30 hrs se alcanzaran los 0°C",
-                textAlign = TextAlign.Center,
-                fontSize = 14.sp
+            OutlinedTextField(
+                value = if (temperaturaMinima == 0) "" else temperaturaMinima.toString(),
+                onValueChange = { nuevoTexto: String ->
+                    // Filtrar para permitir solo números y hacer conversión segura
+                    val textoLimpio = nuevoTexto.filter { it.isDigit() }
+                    temperaturaMinima = textoLimpio.toIntOrNull() ?: 0
+                },
+                label = { Text("Temperatura mínima en °C") },
+                shape = RoundedCornerShape(16.dp),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number, imeAction = ImeAction.Next
+                ),
+                singleLine = true,
+                modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
             )
-            Text(
-                text = "Cantidad de nodos conectados: 2",
-                textAlign = TextAlign.Center,
-                fontSize = 14.sp
+            OutlinedTextField(
+                value = if (intervaloActualizacion == 0) "" else intervaloActualizacion.toString(),
+                onValueChange = { nuevoTexto: String ->
+                    // Filtrar para permitir solo números y hacer conversión segura
+                    val textoLimpio = nuevoTexto.filter { it.isDigit() }
+                    intervaloActualizacion = textoLimpio.toIntOrNull() ?: 0
+                },
+                label = { Text("Intervalo de actualización (segundos)") },
+                shape = RoundedCornerShape(16.dp),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
+                singleLine = true,
+                modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
             )
-            Text(
-                text = ultimaActualizacion,
-                textAlign = TextAlign.Center,
-                fontSize = 14.sp
-            )
+            Button(
+                onClick = {
+                    scope.launch {
+                        bleManager.cambiarTiempoRefresco(intervaloActualizacion * 1000)
+                        delay(200.milliseconds) // Pausa de 200 ms para dar tiempo al bus BLE
+                        bleManager.temperaturaMinima(temperaturaMinima)
+                    }
+                    Toast.makeText(
+                        context,
+                        "Configuración guardada correctamente",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) { Text(text = "Guardar configuración") }
         }
-
+        Column(
+            modifier
+                .padding(8.dp)
+                .width(300.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Pruebas",
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold
+            )
+            Button(
+                onClick = {
+                    bleManager.controlarPin(true)
+                    Toast.makeText(
+                        context,
+                        "Relé encendido",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) { Text(text = "Encender relé") }
+            Button(
+                onClick = {
+                    bleManager.controlarPin(false)
+                    Toast.makeText(
+                        context,
+                        "Relé apagado",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }, modifier = Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()
+            ) { Text(text = "Apagar relé") }
+        }
     }
 }
 
