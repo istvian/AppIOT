@@ -1,5 +1,6 @@
 package com.example.appiot.screens
 
+import android.content.Context
 import android.os.Debug
 import android.util.Log
 import android.widget.Toast
@@ -21,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +47,7 @@ import org.json.JSONObject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 
 @Composable
@@ -60,14 +63,11 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
     var emisor by remember { mutableStateOf("--") }
     var ultimaActualizacion by remember { mutableStateOf("Esperando datos...") }
 
+    val device by bleManager.connectedDevice.collectAsState()
     // 2. Observar el estado de la conexión y el dispositivo conectado
     val connectionState by bleManager.connectionState.collectAsStateWithLifecycle(
         BleConnectionState.Disconnected
     )
-        ?: remember { mutableStateOf(BleConnectionState.Disconnected) }
-    val connectedDevice by bleManager.connectedDevice.collectAsStateWithLifecycle(null)
-        ?: remember { mutableStateOf(null) }
-
     // 3. Recolectar las notificaciones BLE emitidas por el ESP32
     LaunchedEffect(bleManager) {
         bleManager.receivedData.collect { rawJson ->
@@ -93,6 +93,17 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
             }
         }
     }
+    LaunchedEffect(device) {
+        while(device==null)
+        {
+            val prefs = context.getSharedPreferences("ble_prefs", Context.MODE_PRIVATE)
+            val mac = prefs.getString("LAST_MAC_ADDRESS", null)
+            if (mac != null) {
+                bleManager.reconectar(mac)
+            }
+            delay(2500.milliseconds)
+        }
+    }
     Column(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -112,7 +123,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
         }
         Row() {
             Text(
-                text = "Conectado",
+                text = if (device == null) "Dispositivo desconectado" else "Conectado",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Start,
                 fontSize = 16.sp,
@@ -125,7 +136,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                 .padding(4.dp),
         ) {
             Text(
-                text = "Temperatura actual: ${temperatura}°C",
+                text = if (device == null) "Dispositivo desconectado" else "Temperatura actual: ${temperatura}°C",
                 modifier
                     .background(Color.Red)
                     .padding(8.dp)
@@ -142,7 +153,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                 .padding(4.dp),
         ) {
             Text(
-                text = "Humedad actual: ${humedad}%",
+                text = if (device == null) "Dispositivo desconectado" else "Humedad actual: ${humedad}°C",
                 modifier
                     .background(Color.DarkGray)
                     .padding(8.dp)
@@ -209,7 +220,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                     Toast.makeText(
                         context,
                         "Configuración guardada correctamente",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_SHORT
                     ).show()
                 }, modifier = Modifier
                     .padding(4.dp)
@@ -233,7 +244,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                     Toast.makeText(
                         context,
                         "Relé encendido",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_SHORT
                     ).show()
                 }, modifier = Modifier
                     .padding(4.dp)
@@ -245,7 +256,7 @@ fun RealtimeScreen(bleManager: BleConnectionManager, modifier: Modifier = Modifi
                     Toast.makeText(
                         context,
                         "Relé apagado",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_SHORT
                     ).show()
                 }, modifier = Modifier
                     .padding(4.dp)

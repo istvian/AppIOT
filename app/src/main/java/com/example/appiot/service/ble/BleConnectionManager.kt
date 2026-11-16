@@ -83,9 +83,11 @@ class BleConnectionManager(private val context: Context) {
                         connectedDevice.value = null
                         connectionState.value = BleConnectionState.Disconnected
                         cerrarConexion()
+
                     }
                 }
-            } else {
+            }
+            else {
                 Log.e("BLE", "Fallo de conexión o error GATT: $status")
                 connectionState.value =
                     BleConnectionState.Error("Error al conectar (Código: $status)")
